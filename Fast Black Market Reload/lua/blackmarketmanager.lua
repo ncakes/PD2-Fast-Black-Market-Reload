@@ -116,17 +116,27 @@ function BlackMarketManager:get_modify_weapon_consequence(category, slot, part_i
 	return orig_BlackMarketManager_get_modify_weapon_consequence(self, category, slot, part_id, ...)
 end
 
+--Okay so this entire calculation result is actually not used for displaying stats.
+--If it was, we could have a stale cache issue after changing skins with stat boosts.
+--Vanilla data flow:
+	--BMG:populate_mods() calls BMM:get_weapon_stats_with_mod() and stores in new_data.comparision_data.
+	--BMG:set_selected_tab() / BMG:on_slot_selected() call BMG:show_stats() / BMG:update_info_text().
+	--BMG:show_stats() calculates stats independently.
+	--BMG:update_info_text() only uses comparision_data.zoom for parts with gadget_zoom_add_stat.
+--There are no parts that use gadget_zoom_add_stat but whatever this is basically free.
 local orig_BlackMarketManager_get_weapon_stats_with_mod = BlackMarketManager.get_weapon_stats_with_mod
-function BlackMarketManager:get_weapon_stats_with_mod(category, slot, part_id, ...)
+function BlackMarketManager:get_weapon_stats_with_mod(category, slot, ...)
 	local cache = _G.WeaponCraftingCache
 	if cache and cache._reloading and cache._current_tab then
 		cache.bmm_crafted = cache.bmm_crafted or {}
-		cache.bmm_crafted.get_weapon_stats_with_mod = cache.bmm_crafted.get_weapon_stats_with_mod or {}
-		cache.bmm_crafted.get_weapon_stats_with_mod[part_id] = cache.bmm_crafted.get_weapon_stats_with_mod[part_id] or orig_BlackMarketManager_get_weapon_stats_with_mod(self, category, slot, part_id, ...)
-		return cache.bmm_crafted.get_weapon_stats_with_mod[part_id]
+		if not cache.bmm_crafted.get_weapon_stats_with_mod then
+			local current_zoom = self:get_weapon_stats(category, slot).zoom
+			cache.bmm_crafted.get_weapon_stats_with_mod = {zoom = current_zoom}
+		end
+		return cache.bmm_crafted.get_weapon_stats_with_mod
 	end
 
-	return orig_BlackMarketManager_get_weapon_stats_with_mod(self, category, slot, part_id, ...)
+	return orig_BlackMarketManager_get_weapon_stats_with_mod(self, category, slot, ...)
 end
 
 --Blueprint is a reference to tweak_data.blackmarket.weapon_skins[cosmetic_id].blueprint

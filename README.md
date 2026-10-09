@@ -8,7 +8,7 @@ Speeds up the weapon customization UI reloading. A lot. [WeaponFactoryManager Ov
 
 The weapon customization UI gets reloaded every time you change your weapon. For weapons with a lot of attachments, this becomes extremely slow because:
 
-1. The game evaluates every attachment to determine whether it can be equipped and calculates the resulting weapon stats to display the stat comparison.
+1. The game evaluates every attachment to determine whether it can be equipped and calculates the resulting weapon stats ~~to display the stat comparison~~.
 2. The game evaluates every attachment to determine whether it can be previewed.
 
 Fast Black Market Reload (FBMR) works by caching the results of function calls made during a reload. The cache is divided into data related to your actual weapon and data related to the preview. When you modify your weapon, the preview does not change, so FBMR reuses all cached data related to the preview. Similarly, when you preview an attachment, your actual weapon does not change, so FBMR reuses all cached data related to the actual weapon.
@@ -34,22 +34,28 @@ FBMR detects whether weapon attachments have been modified when previewing a ski
 
 Because the table reference of `_preview_blueprint.blueprint` always changes during a preview in the vanilla game, FBMR needs to validate the table to see if the attachments were modified. However, if the table reference of `_preview_blueprint.blueprint` does not change, this indicates that another mod explicitly chose not to replace the `_preview_blueprint.blueprint` table. In this case, FBMR assumes that no attachments were modified. Optional Skin Attachments v5.0.1 complies with this contract.
 
-### Benchmarks
+### Avoiding Unnecessary Weapon Stat Calculations
+
+The vanilla game calls `BlackMarketManager:get_weapon_stats_with_mod` for every possible attachment when loading/reloading the weapon customization UI. This function puts the attachment on your gun and calculates the resulting weapon stats. You would think that the result is used for displaying the weapon stats comparison, but no. PAYDAY re-calculates the displayed stat comparison separately whenever an attachment is selected and the original result is basically unused.
+
+As of v1.1, FBMR skips evaluating `BlackMarketManager:get_weapon_stats_with_mod` during a reload. This substantially improves performance when applying or removing attachments and also the initial loading when entering weapon customization.
+
+### Benchmarks (v1.1)
 
 Some benchmarks when modifying a CAR-4 with 14 attachments equipped. Measurements are averaged over 10 runs. The base game times are all roughly the same because the entire weapon customization UI is reloaded after every action.
 
-FBMR provides a moderate improvement when applying weapon attachments, while previewing attachments is more than twice as fast. Actions that do not change the weapon's attachments are substantially faster because FBMR can reuse the cached results from the previous reload.
+FBMR significantly reduces reload times when applying or previewing weapon attachments. Actions that do not change the weapon's attachments are even faster because FBMR can reuse the cached results from the previous reload.
 
 The WeaponFactoryManager Overrides/Forbids Caching (WFMOFC) mod speeds up the underlying WeaponFactoryManager function calls themselves. The two mods work well together. FBMR avoids making function calls if the results can be reused while WFMOFC makes the necessary calls faster.
 
 | Action                | Base  | FBMR  | WFMOFC | Both  |
 |-----------------------|-------|-------|--------|-------|
-| Apply Attachment      | 0.461 | 0.369 | 0.307  | 0.264 |
-| Preview Attachment    | 0.485 | 0.203 | 0.292  | 0.193 |
-| Apply Skin\*          | 0.431 | 0.051 | 0.257  | 0.036 |
-| Preview Skin\*        | 0.487 | 0.054 | 0.257  | 0.040 |
-| Change Weapon Color\* | 0.479 | 0.066 | 0.319  | 0.060 |
-| Change Reticle\*      | 0.525 | 0.082 | 0.102  | 0.064 |
+| Apply Attachment      | 0.495 | 0.283 | 0.316  | 0.203 |
+| Preview Attachment    | 0.523 | 0.228 | 0.316  | 0.202 |
+| Apply Skin\*          | 0.491 | 0.056 | 0.276  | 0.047 |
+| Preview Skin\*        | 0.514 | 0.065 | 0.280  | 0.047 |
+| Change Weapon Color\* | 0.545 | 0.064 | 0.349  | 0.064 |
+| Change Reticle\*      | 0.575 | 0.084 | 0.109  | 0.064 |
 
 \* No attachment changes.
 

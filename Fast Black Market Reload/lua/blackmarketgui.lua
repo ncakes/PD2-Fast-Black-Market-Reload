@@ -58,7 +58,7 @@ Hooks:PreHook(BlackMarketGui, "_setup", "FastBlackMarketReload-PreHook-BlackMark
 
 	local cache = _G.WeaponCraftingCache
 	if cache and (cache.category ~= category or cache.slot ~= slot) then
-		log("FastBlackMarketReload: bad cache.")
+		log("[FBMR] ERROR: bad cache.")
 		_G.WeaponCraftingCache = nil
 		cache = nil
 	end
@@ -233,47 +233,5 @@ Hooks:PreHook(BlackMarketGui, "preview_weapon_without_mod_callback", "FastBlackM
 	local cache = _G.WeaponCraftingCache
 	if cache then
 		cache.bmm_preview = nil
-	end
-end)
-
---Clear cache when leaving weapon customization UI.
---Note: this detection is not perfect. Also triggered when:
-	--Opening weapon color customization.
-	--Closing gadget customization.
-	--Closing reticle customization.
-Hooks:PreHook(BlackMarketGui, "close", "FastBlackMarketReload-PreHook-BlackMarketGui:close", function(self)
-	local node = self._node
-	local node_name = node and node._parameters and node._parameters.name
-	if node_name ~= "blackmarket_crafting_node" then
-		return
-	end
-
-	--Set this flag if cache should not be cleared.
-	if _G.WeaponCraftingCache and WeaponCraftingCache._do_not_clear then
-		WeaponCraftingCache._do_not_clear = nil
-		return
-	end
-
-	_G.WeaponCraftingCache = nil
-end)
-
---Entering weapon color customization.
-Hooks:PreHook(BlackMarketGui, "open_customize_weapon_color_menu", "FastBlackMarketReload-PreHook-BlackMarketGui:open_customize_weapon_color_menu", function()
-	if _G.WeaponCraftingCache then
-		WeaponCraftingCache._do_not_clear = true
-	end
-end)
-
---Customize reticle.
-Hooks:PreHook(BlackMarketGui, "open_reticle_switch_menu", "FastBlackMarketReload-PreHook-BlackMarketGui:open_reticle_switch_menu", function()
-	if _G.WeaponCraftingCache then
-		WeaponCraftingCache._do_not_clear = true
-	end
-end)
-
---Customize gadget.
-Hooks:PreHook(BlackMarketGui, "open_customize_gadget_menu", "FastBlackMarketReload-PreHook-BlackMarketGui:open_customize_gadget_menu", function()
-	if _G.WeaponCraftingCache then
-		WeaponCraftingCache._do_not_clear = true
 	end
 end)
